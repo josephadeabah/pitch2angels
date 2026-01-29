@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Upload, Send, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import { Upload, Send, CheckCircle, ArrowRight, ArrowLeft, CreditCard, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const businessCategories = [
@@ -71,6 +71,13 @@ interface FormData {
   collaboratorNames: string;
   description: string;
   productImage: File | null;
+  // Payment Evidence
+  bankName: string;
+  accountHolderName: string;
+  transactionReference: string;
+  amountPaid: string;
+  paymentDate: string;
+  paymentReceipt: File | null;
   agreedToTerms: boolean;
   signature: string;
 }
@@ -99,6 +106,13 @@ const ApplicationForm = () => {
     collaboratorNames: "",
     description: "",
     productImage: null,
+    // Payment Evidence
+    bankName: "",
+    accountHolderName: "",
+    transactionReference: "",
+    amountPaid: "",
+    paymentDate: "",
+    paymentReceipt: null,
     agreedToTerms: false,
     signature: "",
   });
@@ -120,6 +134,13 @@ const ApplicationForm = () => {
     const file = e.target.files?.[0];
     if (file) {
       updateField("productImage", file);
+    }
+  };
+
+  const handleReceiptChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      updateField("paymentReceipt", file);
     }
   };
 
@@ -466,6 +487,102 @@ const ApplicationForm = () => {
                         </>
                       )}
                     </label>
+                  </div>
+                </div>
+
+                {/* Payment Evidence Section */}
+                <div className="border-t border-border pt-8 mt-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-full flame-gradient flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <h4 className="font-display font-bold text-deep-black">Payment Evidence</h4>
+                      <p className="text-sm text-muted-foreground">Please provide details of your application fee payment</p>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="bankName">Bank Name *</Label>
+                      <Input
+                        id="bankName"
+                        value={formData.bankName}
+                        onChange={(e) => updateField("bankName", e.target.value)}
+                        required
+                        placeholder="e.g., GCB Bank, Ecobank, MTN MoMo"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accountHolderName">Account Holder Name *</Label>
+                      <Input
+                        id="accountHolderName"
+                        value={formData.accountHolderName}
+                        onChange={(e) => updateField("accountHolderName", e.target.value)}
+                        required
+                        placeholder="Name on the payment account"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-6 mt-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="transactionReference">Transaction/Reference Number *</Label>
+                      <Input
+                        id="transactionReference"
+                        value={formData.transactionReference}
+                        onChange={(e) => updateField("transactionReference", e.target.value)}
+                        required
+                        placeholder="e.g., TXN123456789"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amountPaid">Amount Paid (GHS) *</Label>
+                      <Input
+                        id="amountPaid"
+                        type="number"
+                        value={formData.amountPaid}
+                        onChange={(e) => updateField("amountPaid", e.target.value)}
+                        required
+                        placeholder="e.g., 100.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="paymentDate">Payment Date *</Label>
+                      <Input
+                        id="paymentDate"
+                        type="date"
+                        value={formData.paymentDate}
+                        onChange={(e) => updateField("paymentDate", e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mt-6">
+                    <Label>Payment Receipt / Screenshot *</Label>
+                    <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center hover:border-primary/50 transition-colors bg-primary/5">
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleReceiptChange}
+                        className="hidden"
+                        id="paymentReceipt"
+                        required
+                      />
+                      <label htmlFor="paymentReceipt" className="cursor-pointer">
+                        <Receipt className="w-12 h-12 mx-auto text-primary mb-4" />
+                        {formData.paymentReceipt ? (
+                          <p className="text-primary font-medium">{formData.paymentReceipt.name}</p>
+                        ) : (
+                          <>
+                            <p className="text-deep-black font-medium mb-1">Upload Payment Proof</p>
+                            <p className="text-sm text-muted-foreground">Bank receipt, MoMo screenshot, or transfer confirmation</p>
+                            <p className="text-xs text-muted-foreground mt-2">PNG, JPG, or PDF up to 10MB</p>
+                          </>
+                        )}
+                      </label>
+                    </div>
                   </div>
                 </div>
 
