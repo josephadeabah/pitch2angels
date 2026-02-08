@@ -24,7 +24,7 @@ const EligibilitySection = () => {
     },
     {
       eligible: false,
-      text: "Cannot be a current employee of Duapa Werkspace or partner organizations",
+      text: "Must not provide false, misleading, or incomplete business information during application or pitching",
     },
     {
       eligible: false,

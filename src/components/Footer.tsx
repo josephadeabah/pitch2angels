@@ -1,4 +1,4 @@
-import { Flame, Mail, MapPin, Phone } from "lucide-react";
+import { MicVocal, Mail, MapPin, Phone } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -8,11 +8,11 @@ const Footer = () => {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <Flame className="w-8 h-8 text-primary" />
+              <MicVocal  className="w-8 h-8 text-primary" />
               <span className="font-display text-2xl font-bold text-pure-white">Pitch 2 Angels</span>
             </div>
             <p className="text-soft-white/70 mb-4">
-              Powered by Duapa Werkspace – empowering Ghana's next generation of entrepreneurs.
+              Powered by Duapa Werkspace in collaboration with BantuHive – empowering Ghana's next generation of entrepreneurs.
             </p>
           </div>
 

@@ -55,33 +55,6 @@ const AboutSection = () => {
             </div>
           ))}
         </div>
-
-        {/* Image Section */}
-        <div className="grid md:grid-cols-2 gap-8 items-center">
-          <div className="relative">
-            <img 
-              src={entrepreneursImage}
-              alt="Entrepreneurs collaborating"
-              className="rounded-2xl shadow-elevated w-full"
-            />
-            <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-primary/20 rounded-2xl -z-10" />
-          </div>
-          <div className="space-y-6">
-            <h3 className="font-display text-3xl font-bold text-deep-black">
-              Building Ghana's Next Generation of Business Leaders
-            </h3>
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              Our tailored programs for youth and women foster inclusivity, skill development, and access to funding, driving sustainable success within the entrepreneurial ecosystem through community networking and collaboration.
-            </p>
-            <div className="relative">
-              <img 
-                src={partnershipImage}
-                alt="Business partnership"
-                className="rounded-2xl shadow-card w-full max-w-sm"
-              />
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-import { ArrowRight, Flame } from "lucide-react";
+import { ArrowRight, MicVocal  } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-pitch.jpg";
 
@@ -27,7 +27,7 @@ const HeroSection = () => {
       <div className="relative z-10 container mx-auto px-4 text-center">
         <div className="animate-fade-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mb-6">
-            <Flame className="w-4 h-4 text-primary" />
+            <MicVocal className="w-4 h-4 text-primary" />
             <span className="text-primary text-sm font-medium">Season 1 Applications Now Open</span>
           </div>
           
@@ -36,7 +36,7 @@ const HeroSection = () => {
           </h1>
           
           <p className="text-xl md:text-2xl text-soft-white/80 max-w-3xl mx-auto mb-4 font-body">
-            Ghana's Premier Dragon's Den-Style Investment Showcase
+            Ghana's Premier Investment Showcase
           </p>
           
           <p className="text-lg text-soft-white/60 max-w-2xl mx-auto mb-10 font-body">
@@ -80,13 +80,6 @@ const HeroSection = () => {
               <div className="text-soft-white/60 text-sm mt-1">{stat.label}</div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Scroll Indicator */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-        <div className="w-6 h-10 rounded-full border-2 border-primary/50 flex items-start justify-center p-2">
-          <div className="w-1 h-2 bg-primary rounded-full animate-pulse" />
         </div>
       </div>
     </section>

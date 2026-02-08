@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Flame, Menu, X } from "lucide-react";
+import { MicVocal, Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -31,7 +31,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <Flame className="w-8 h-8 text-primary" />
+            <MicVocal className="w-8 h-8 text-primary" />
             <span className="font-display text-xl font-bold text-pure-white">
               Pitch 2 Angels
             </span>
