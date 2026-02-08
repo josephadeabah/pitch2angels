@@ -1,33 +1,48 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import path from "path";
-import fs from "fs";
 import multer from "multer";
+import path from "path";
 import pool from "./db";
+import { v2 as cloudinary } from "cloudinary";
+import { Readable } from "stream";
 
+// Initialize Express
 const app = express();
 
-// Security middleware
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+  secure: true
+});
+
+// CORS Configuration
+const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [
+  'https://pitch2angels.com',
+  'https://www.pitch2angels.com'
+];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ["https://pitch2angels.com"] 
-    : ["http://localhost:5173", "http://localhost:8080"],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
+// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Rate limiting (install express-rate-limit if needed)
-// app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
 
 // File filter for uploads
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
@@ -42,17 +57,8 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   }
 };
 
-// Multer configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
+// In-memory storage (we'll upload directly to Cloudinary)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -62,12 +68,46 @@ const upload = multer({
   }
 });
 
+// Helper function to upload buffer to Cloudinary
+const uploadToCloudinary = (buffer: Buffer, folder: string, filename: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: `pitch2angels/${folder}`,
+        resource_type: 'auto',
+        public_id: filename.replace(/\.[^/.]+$/, ""), // Remove file extension
+        overwrite: false
+      },
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          reject(error);
+        } else {
+          resolve(result?.secure_url || '');
+        }
+      }
+    );
+
+    // Create a readable stream from buffer and pipe to Cloudinary
+    const readableStream = new Readable();
+    readableStream.push(buffer);
+    readableStream.push(null);
+    readableStream.pipe(uploadStream);
+  });
+};
+
+// ============================================
+// ROUTES
+// ============================================
+
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    service: 'pitch2angels-api'
+    service: 'pitch2angels-api',
+    environment: process.env.NODE_ENV || 'development',
+    cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? 'configured' : 'not-configured'
   });
 });
 
@@ -132,14 +172,29 @@ app.post(
         }
       }
 
-      // Process file URLs
-      const productImageUrl = files?.productImage?.[0]
-        ? `/uploads/${files.productImage[0].filename}`
-        : null;
+      // Upload files to Cloudinary
+      let productImageUrl = '';
+      let paymentReceiptUrl = '';
 
-      const paymentReceiptUrl = files?.paymentReceipt?.[0]
-        ? `/uploads/${files.paymentReceipt[0].filename}`
-        : null;
+      if (files?.productImage?.[0]) {
+        const file = files.productImage[0];
+        const timestamp = Date.now();
+        const filename = `product-${timestamp}-${file.originalname}`;
+        
+        console.log(`☁️ Uploading product image to Cloudinary: ${filename}`);
+        productImageUrl = await uploadToCloudinary(file.buffer, "products", filename);
+        console.log(`✅ Product image uploaded: ${productImageUrl}`);
+      }
+
+      if (files?.paymentReceipt?.[0]) {
+        const file = files.paymentReceipt[0];
+        const timestamp = Date.now();
+        const filename = `receipt-${timestamp}-${file.originalname}`;
+        
+        console.log(`☁️ Uploading payment receipt to Cloudinary: ${filename}`);
+        paymentReceiptUrl = await uploadToCloudinary(file.buffer, "receipts", filename);
+        console.log(`✅ Payment receipt uploaded: ${paymentReceiptUrl}`);
+      }
 
       // Validate file presence
       if (!productImageUrl || !paymentReceiptUrl) {
@@ -147,6 +202,14 @@ app.post(
           error: 'Both product image and payment receipt are required',
           success: false
         });
+      }
+
+      // Clean text function (removing emojis and special characters)
+      function cleanText(text: string): string {
+        if (!text) return text;
+        return text
+          .replace(/[^\x20-\x7E\t\n\r]/g, '') // Remove non-ASCII
+          .trim();
       }
 
       // Prepare database query
@@ -182,54 +245,33 @@ app.post(
         RETURNING id, created_at
       `;
 
-    // Add this function at the top of your file
-    function cleanText(text: string): string {
-    if (!text) return text;
-    
-    // Remove emojis and non-ASCII characters
-    return text
-        .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
-        .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Symbols & Pictographs
-        .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport & Map Symbols
-        .replace(/[\u{1F700}-\u{1F77F}]/gu, '') // Alchemical Symbols
-        .replace(/[\u{1F780}-\u{1F7FF}]/gu, '') // Geometric Shapes
-        .replace(/[\u{1F800}-\u{1F8FF}]/gu, '') // Supplemental Arrows-C
-        .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental Symbols and Pictographs
-        .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '') // Chess Symbols
-        .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols and Pictographs Extended-A
-        .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Miscellaneous Symbols
-        .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
-        .replace(/[^\x20-\x7E\t\n\r]/g, '');    // Remove any other non-ASCII characters except whitespace
-    }
-
-    // Then update your values array in the POST handler:
-    const values = [
-    cleanText(data.firstName.trim()),
-    cleanText(data.lastName.trim()),
-    data.guardianName ? cleanText(data.guardianName.trim()) : null,
-    cleanText(data.phone.trim()),
-    cleanText(data.email.trim().toLowerCase()),
-    cleanText(data.city.trim()),
-    cleanText(data.region.trim()),
-    data.pronouns ? cleanText(data.pronouns) : null,
-    data.occupation ? cleanText(data.occupation.trim()) : null,
-    cleanText(data.businessName.trim()),
-    data.website ? cleanText(data.website.trim()) : null,
-    categories,
-    data.phase ? cleanText(data.phase) : null,
-    data.hasCollaborators || 'no',
-    data.collaboratorNames ? cleanText(data.collaboratorNames.trim()) : null,
-    cleanText(data.description.trim()), // This is where the emoji likely is
-    productImageUrl,
-    cleanText(data.bankName.trim()),
-    cleanText(data.accountHolderName.trim()),
-    cleanText(data.transactionReference.trim()),
-    parseFloat(data.amountPaid) || 0,
-    data.paymentDate,
-    paymentReceiptUrl,
-    data.agreedToTerms === 'true' || data.agreedToTerms === true,
-    cleanText(data.signature.trim())
-    ];
+      const values = [
+        cleanText(data.firstName),
+        cleanText(data.lastName),
+        data.guardianName ? cleanText(data.guardianName) : null,
+        cleanText(data.phone),
+        cleanText(data.email.toLowerCase()),
+        cleanText(data.city),
+        cleanText(data.region),
+        data.pronouns ? cleanText(data.pronouns) : null,
+        data.occupation ? cleanText(data.occupation) : null,
+        cleanText(data.businessName),
+        data.website ? cleanText(data.website) : null,
+        categories,
+        data.phase ? cleanText(data.phase) : null,
+        data.hasCollaborators || 'no',
+        data.collaboratorNames ? cleanText(data.collaboratorNames) : null,
+        cleanText(data.description),
+        productImageUrl,
+        cleanText(data.bankName),
+        cleanText(data.accountHolderName),
+        cleanText(data.transactionReference),
+        parseFloat(data.amountPaid) || 0,
+        data.paymentDate,
+        paymentReceiptUrl,
+        data.agreedToTerms === 'true' || data.agreedToTerms === true,
+        cleanText(data.signature)
+      ];
 
       console.log('📊 Executing database query...');
       const result = await pool.query(query, values);
@@ -238,6 +280,8 @@ app.post(
       const processTime = Date.now() - startTime;
 
       console.log(`✅ Application ${applicationId} submitted successfully in ${processTime}ms`);
+      console.log(`☁️ Product Image URL: ${productImageUrl}`);
+      console.log(`📄 Payment Receipt URL: ${paymentReceiptUrl}`);
 
       // Send success response
       res.status(201).json({
@@ -256,7 +300,7 @@ app.post(
       
       // Handle specific errors
       const errorCode = (error as NodeJS.ErrnoException)?.code;
-      if (errorCode === '23505') { // Unique violation
+      if (errorCode === '23505') {
         return res.status(409).json({
           error: 'Duplicate entry',
           message: 'An application with this email already exists',
@@ -264,7 +308,7 @@ app.post(
         });
       }
 
-      if (errorCode === '23502') { // Not null violation
+      if (errorCode === '23502') {
         return res.status(400).json({
           error: 'Missing required data',
           message: 'Please fill all required fields',
@@ -311,35 +355,6 @@ app.get('/api/applications/:id', async (req: Request, res: Response) => {
       success: false
     });
   }
-});
-
-// Serve uploaded files
-app.use("/uploads", express.static(uploadDir));
-
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: (err?: Error) => void) => {
-  console.error('Unhandled error:', err);
-
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        error: 'File too large',
-        message: 'File size should not exceed 10MB',
-        success: false
-      });
-    }
-    return res.status(400).json({
-      error: 'File upload error',
-      message: err.message,
-      success: false
-    });
-  }
-
-  res.status(500).json({
-    error: 'Internal server error',
-    message: 'Something went wrong',
-    success: false
-  });
 });
 
 // ============================================
@@ -455,7 +470,7 @@ app.get('/api/admin/applications', async (req: Request, res: Response) => {
   }
 });
 
-// Update application status (review, approve, reject)
+// Update application status
 app.patch('/api/admin/applications/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -550,24 +565,17 @@ app.patch('/api/admin/applications/:id', async (req: Request, res: Response) => 
 app.get('/api/admin/statistics', async (req: Request, res: Response) => {
   try {
     const queries = await Promise.all([
-      // Total applications
       pool.query('SELECT COUNT(*) FROM applications'),
-      
-      // Applications today
       pool.query(`
         SELECT COUNT(*) FROM applications 
         WHERE DATE(created_at) = CURRENT_DATE
       `),
-      
-      // By region
       pool.query(`
         SELECT region, COUNT(*) as count 
         FROM applications 
         GROUP BY region 
         ORDER BY count DESC
       `),
-      
-      // By review status
       pool.query(`
         SELECT 
           COUNT(*) FILTER (WHERE NOT reviewed) as pending,
@@ -576,8 +584,6 @@ app.get('/api/admin/statistics', async (req: Request, res: Response) => {
           COUNT(*) FILTER (WHERE reviewed AND review_status = 'shortlisted') as shortlisted
         FROM applications
       `),
-      
-      // Recent applications (last 7 days)
       pool.query(`
         SELECT 
           DATE(created_at) as date,
@@ -611,12 +617,11 @@ app.get('/api/admin/statistics', async (req: Request, res: Response) => {
   }
 });
 
-// Delete application (admin only)
+// Delete application
 app.delete('/api/admin/applications/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
-    // Check if application exists
     const checkResult = await pool.query(
       'SELECT id FROM applications WHERE id = $1',
       [id]
@@ -629,7 +634,6 @@ app.delete('/api/admin/applications/:id', async (req: Request, res: Response) =>
       });
     }
 
-    // Delete the application
     await pool.query('DELETE FROM applications WHERE id = $1', [id]);
 
     res.json({
@@ -673,7 +677,6 @@ app.get('/api/admin/export', async (req: Request, res: Response) => {
       ORDER BY created_at DESC
     `);
 
-    // Convert to CSV
     const headers = [
       'ID', 'First Name', 'Last Name', 'Email', 'Phone', 'City', 'Region',
       'Business Name', 'Categories', 'Phase', 'Amount Paid', 'Transaction Reference',
@@ -702,6 +705,10 @@ app.get('/api/admin/export', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================
+// ERROR HANDLING & SERVER SETUP
+// ============================================
+
 // 404 handler
 app.use('*', (req: Request, res: Response) => {
   res.status(404).json({
@@ -710,10 +717,39 @@ app.use('*', (req: Request, res: Response) => {
   });
 });
 
+// Error handling middleware
+app.use((err: Error, req: Request, res: Response, next: (err?: Error) => void) => {
+  console.error('Unhandled error:', err);
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        error: 'File too large',
+        message: 'File size should not exceed 10MB',
+        success: false
+      });
+    }
+    return res.status(400).json({
+      error: 'File upload error',
+      message: err.message,
+      success: false
+    });
+  }
+
+  res.status(500).json({
+    error: 'Internal server error',
+    message: 'Something went wrong',
+    success: false
+  });
+});
+
+// Start server
 const PORT = process.env.PORT || 4000;
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📁 Uploads directory: ${uploadDir}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`☁️ Cloudinary: ${process.env.CLOUDINARY_CLOUD_NAME ? 'Configured' : 'Not configured'}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
 });
 
 // Graceful shutdown
@@ -733,7 +769,6 @@ const gracefulShutdown = () => {
     }
   });
 
-  // Force shutdown after 10 seconds
   setTimeout(() => {
     console.error('⏰ Could not close connections in time, forcing shutdown');
     process.exit(1);

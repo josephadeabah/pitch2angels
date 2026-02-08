@@ -3,18 +3,17 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Use connection string WITHOUT SSL
+// SiteGround PostgreSQL connection
 const connectionString = `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`;
 
 const pool = new Pool({
   connectionString,
-  // REMOVE SSL configuration
-  // ssl: {
-  //   rejectUnauthorized: false
-  // },
-  max: 10,
+  ssl: {
+    rejectUnauthorized: false // REQUIRED for SiteGround SSL
+  },
+  max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // 10 seconds
+  connectionTimeoutMillis: 10000,
 });
 
 // Test connection on startup

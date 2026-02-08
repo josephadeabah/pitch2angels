@@ -1,0 +1,11 @@
+[phases.setup]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node dist/index.js"
+
+[build.args]
+NODE_VERSION = "18"
