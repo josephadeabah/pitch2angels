@@ -153,7 +153,7 @@ const AdminDashboard = ({ onViewApplication }: AdminDashboardProps) => {
         sortOrder: "desc"
       });
 
-      const response = await fetch(`pitch2angels-production.up.railway.app/api/admin/applications?${params}`);
+      const response = await fetch(`https://pitch2angels-production.up.railway.app/api/admin/applications?${params}`);
       const data = await response.json();
 
       if (data.success) {
@@ -186,7 +186,7 @@ const AdminDashboard = ({ onViewApplication }: AdminDashboardProps) => {
   // Fetch statistics
   const fetchStatistics = async () => {
     try {
-      const response = await fetch("pitch2angels-production.up.railway.app/api/admin/statistics");
+      const response = await fetch("https://pitch2angels-production.up.railway.app/api/admin/statistics");
       const data = await response.json();
 
       if (data.success) {
@@ -227,7 +227,7 @@ const AdminDashboard = ({ onViewApplication }: AdminDashboardProps) => {
     }
 
     try {
-      const response = await fetch(`pitch2angels-production.up.railway.app/api/admin/applications/${selectedApp.id}`, {
+      const response = await fetch(`https://pitch2angels-production.up.railway.app/api/admin/applications/${selectedApp.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -266,7 +266,7 @@ const AdminDashboard = ({ onViewApplication }: AdminDashboardProps) => {
     if (!selectedApp) return;
 
     try {
-      const response = await fetch(`pitch2angels-production.up.railway.app/api/admin/applications/${selectedApp.id}`, {
+      const response = await fetch(`https://pitch2angels-production.up.railway.app/api/admin/applications/${selectedApp.id}`, {
         method: "DELETE"
       });
 
@@ -296,7 +296,7 @@ const AdminDashboard = ({ onViewApplication }: AdminDashboardProps) => {
   // Export to CSV
   const handleExport = async () => {
     try {
-      const response = await fetch("pitch2angels-production.up.railway.app/api/admin/export");
+      const response = await fetch("https://pitch2angels-production.up.railway.app/api/admin/export");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
