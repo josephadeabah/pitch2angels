@@ -68,7 +68,7 @@ const ApplicationDetail = ({ applicationId, onBack }: ApplicationDetailProps) =>
   const fetchApplication = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:4000/api/applications/${applicationId}`);
+      const response = await fetch(`pitch2angels-production.up.railway.app/api/applications/${applicationId}`);
       const data = await response.json();
 
       if (data.success) {
@@ -391,7 +391,7 @@ const ApplicationDetail = ({ applicationId, onBack }: ApplicationDetailProps) =>
                         <div className="mt-2">
                           <Button variant="outline" asChild>
                             <a 
-                              href={`http://localhost:4000${application.payment_receipt}`}
+                              href={`pitch2angels-production.up.railway.app${application.payment_receipt}`}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -418,7 +418,7 @@ const ApplicationDetail = ({ applicationId, onBack }: ApplicationDetailProps) =>
                   <CardContent>
                     <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                       <img 
-                        src={`http://localhost:4000${application.product_image}`}
+                        src={`pitch2angels-production.up.railway.app${application.product_image}`}
                         alt="Product"
                         className="w-full h-full object-cover"
                       />
@@ -426,7 +426,7 @@ const ApplicationDetail = ({ applicationId, onBack }: ApplicationDetailProps) =>
                     <div className="mt-4">
                       <Button asChild variant="outline">
                         <a 
-                          href={`http://localhost:4000${application.product_image}`}
+                          href={`pitch2angels-production.up.railway.app${application.product_image}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -451,7 +451,7 @@ const ApplicationDetail = ({ applicationId, onBack }: ApplicationDetailProps) =>
                     <div className="mt-4">
                       <Button asChild>
                         <a 
-                          href={`http://localhost:4000${application.payment_receipt}`}
+                          href={`pitch2angels-production.up.railway.app${application.payment_receipt}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

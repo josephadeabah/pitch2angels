@@ -332,7 +332,7 @@ const ApplicationForm = () => {
       // API endpoint (adjust for production)
       const API_URL = process.env.NODE_ENV === 'production' 
         ? 'https://pitch2angels.com/api/applications'
-        : 'http://localhost:4000/api/applications';
+        : 'pitch2angels-production.up.railway.app/api/applications';
 
       const response = await fetch(API_URL, {
         method: "POST",
