@@ -274,6 +274,9 @@ app.post(
       ];
 
       console.log('📊 Executing database query...');
+      if (!pool) {
+        throw new Error('Database pool is not initialized');
+      }
       const result = await pool.query(query, values);
 
       const applicationId = result.rows[0].id;
@@ -332,6 +335,13 @@ app.get('/api/applications/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
+    if (!pool) {
+      return res.status(500).json({
+        error: 'Database connection unavailable',
+        success: false
+      });
+    }
+
     const result = await pool.query(
       'SELECT * FROM applications WHERE id = $1',
       [id]
@@ -408,6 +418,13 @@ app.get('/api/admin/applications', async (req: Request, res: Response) => {
       : '';
 
     // Get total count
+    if (!pool) {
+      return res.status(500).json({
+        error: 'Database connection unavailable',
+        success: false
+      });
+    }
+
     const countQuery = `SELECT COUNT(*) FROM applications ${whereClause}`;
     const countResult = await pool.query(countQuery, queryParams);
     const total = parseInt(countResult.rows[0].count);
@@ -529,6 +546,13 @@ app.patch('/api/admin/applications/:id', async (req: Request, res: Response) => 
       });
     }
 
+    if (!pool) {
+      return res.status(500).json({
+        error: 'Database connection unavailable',
+        success: false
+      });
+    }
+
     values.push(id);
     const query = `
       UPDATE applications 
@@ -564,6 +588,13 @@ app.patch('/api/admin/applications/:id', async (req: Request, res: Response) => 
 // Get application statistics
 app.get('/api/admin/statistics', async (req: Request, res: Response) => {
   try {
+    if (!pool) {
+      return res.status(500).json({
+        error: 'Database connection unavailable',
+        success: false
+      });
+    }
+
     const queries = await Promise.all([
       pool.query('SELECT COUNT(*) FROM applications'),
       pool.query(`
@@ -622,6 +653,13 @@ app.delete('/api/admin/applications/:id', async (req: Request, res: Response) =>
   try {
     const { id } = req.params;
     
+    if (!pool) {
+      return res.status(500).json({
+        error: 'Database connection unavailable',
+        success: false
+      });
+    }
+
     const checkResult = await pool.query(
       'SELECT id FROM applications WHERE id = $1',
       [id]
@@ -653,6 +691,13 @@ app.delete('/api/admin/applications/:id', async (req: Request, res: Response) =>
 // Export applications to CSV
 app.get('/api/admin/export', async (req: Request, res: Response) => {
   try {
+    if (!pool) {
+      return res.status(500).json({
+        error: 'Database connection unavailable',
+        success: false
+      });
+    }
+
     const result = await pool.query(`
       SELECT 
         id,
@@ -760,8 +805,10 @@ const gracefulShutdown = () => {
     console.log('👋 HTTP server closed');
     
     try {
-      await pool.end();
-      console.log('📦 Database pool closed');
+      if (pool) {
+        await pool.end();
+        console.log('📦 Database pool closed');
+      }
       process.exit(0);
     } catch (err) {
       console.error('Error closing database pool:', err);
